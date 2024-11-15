@@ -253,7 +253,7 @@ def find_plane_angle(known_T,
             if err/max(candidate)[0] > 1e-5:
                 return None, None, 0
 
-            prior_layer_near_zero = np.zeros(4, dtype=np.bool)
+            prior_layer_near_zero = np.zeros(4, dtype=bool)
             prior_layer_near_zero[index_0] = True
             prior_layer_near_zero[index_1] = True
 
@@ -590,21 +590,23 @@ def follow_hyperplane(LAYER, start_point, known_T, known_A, known_B,
 
         neuron_positive_count = np.sum(neuron_values>1,axis=0)
         neuron_negative_count = np.sum(neuron_values<-1,axis=0)
+        print("Positive count:", neuron_positive_count)
+        print("Negative count:", neuron_negative_count)
 
         if (np.all(neuron_positive_count > 0) and np.all(neuron_negative_count > 0)) or \
            (only_need_positive and np.all(neuron_positive_count > 0)):
             print("Have all the points we need (1)")
             print(query_count)
-            print(neuron_positive_count)
-            print(neuron_negative_count)
+            print("Neuron positive count: ",neuron_positive_count)
+            print("Neuron negative count: ",neuron_negative_count)
 
             neuron_values = np.array([get_hidden_at(known_T, known_A, known_B, LAYER, x, False) for x in points_on_plane])
             
             neuron_positive_count = np.sum(neuron_values>1,axis=0)
             neuron_negative_count = np.sum(neuron_values<-1,axis=0)
 
-            print(neuron_positive_count)
-            print(neuron_negative_count)
+            print("Neuron positive count: ",neuron_positive_count)
+            print("Neuron negative count: ",neuron_negative_count)
             
             return points_on_plane, True
     
@@ -883,7 +885,6 @@ def solve_layer_sign(known_T, known_A0, known_B0, critical_points, LAYER,
     
     def get_critical_points():
         print("Init")
-        print(critical_points)
         for point in critical_points:
             print("Tick")
             if already_checked_critical_points or is_on_following_layer(known_T, known_A0, known_B0, point):
@@ -893,10 +894,10 @@ def solve_layer_sign(known_T, known_A0, known_B0, critical_points, LAYER,
     get_critical_point = get_critical_points()
 
 
-    print("Start looking for critical point")
+    print("Start looking for existing critical point")
     MAX_POINTS = 200
     which_point = next(get_critical_point)
-    print("Done looking for critical point")
+    print("Done looking for existing critical point")
 
     initial_points = []
     history = []
@@ -913,6 +914,9 @@ def solve_layer_sign(known_T, known_A0, known_B0, critical_points, LAYER,
             history.append((which_polytope,
                             hidden_vector,
                             np.copy(point)))
+    print("Length of Initial points", len(initial_points))
+    print("Length of history", len(history))
+    print("Length of critical points", len(pts))
     
 
     while True:
@@ -925,7 +929,7 @@ def solve_layer_sign(known_T, known_A0, known_B0, critical_points, LAYER,
         while len(pts) > prev_count+2:
             print("======"*10)
             print("RESTART SEARCH", len(pts), prev_count)
-            print(which_point)
+            # print(which_point[0])
             prev_count = len(pts)
             more_points, done = follow_hyperplane(LAYER, which_point,
                                         known_T,

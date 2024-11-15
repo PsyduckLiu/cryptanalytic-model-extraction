@@ -305,3 +305,17 @@ def check_quality(layer_num, extracted_normal, extracted_bias, do_fix=False):
 
     return extracted_normal,extracted_bias
 
+
+
+
+def on_which_hidden_layer(point):
+    x = point
+    for i in range(0, len(__cheat_A)):
+        x = np.matmul(x, __cheat_A[i]) + __cheat_B[i]
+        for j in range(len(x)):
+            if abs(x[j]) < 1e-4:
+                return i, j
+        if i < len(__cheat_A) - 1:
+            x = x*(x>0)
+        
+    return -1, -1

@@ -23,7 +23,7 @@ from src.global_vars import *
 from src.find_witnesses import do_better_sweep
 from src.hyperplane_normal import get_ratios_lstsq
 
-from src.utils import AcceptableFailure, GatherMoreData, matmul, KnownT, cheat_get_inner_layers, which_is_zero
+from src.utils import AcceptableFailure, GatherMoreData, matmul, KnownT, cheat_get_inner_layers, on_which_hidden_layer, which_is_zero
 import src.sign_recovery as sign_recovery
 
 
@@ -37,7 +37,8 @@ def process_block(ratios, other_ratios):
 
     close = differences < BLOCK_ERROR_TOL * jnp.log(ratios.shape[1])
 
-    pairings = jnp.sum(close, axis=2) >= max(MIN_SAME_SIZE,BLOCK_MULTIPLY_FACTOR*(np.log(ratios.shape[1])-2))
+    # pairings = jnp.sum(close, axis=2) >= max(MIN_SAME_SIZE,BLOCK_MULTIPLY_FACTOR*(np.log(ratios.shape[1])-2))
+    pairings = jnp.sum(close, axis=2) >= 2
 
     return pairings
 
@@ -58,7 +59,7 @@ def graph_solve(all_ratios, all_criticals, expected_neurons, LAYER, debug=False)
     now = time.time()
     all_pairings = [[] for _ in range(sum(map(len,ratios_group)))]
     for batch_index,(criticals,ratios) in enumerate(zip(criticals_group, ratios_group)):
-        print(batch_index)
+        print("batch_index:", batch_index)
 
         # Compute the all-pairs similarity
         axis = list(range(all_ratios.shape[1]))
@@ -84,6 +85,7 @@ def graph_solve(all_ratios, all_criticals, expected_neurons, LAYER, debug=False)
     components = list(nx.connected_components(graph))
 
     sorted_components = sorted(components, key=lambda x: -len(x))
+    print("Sorted components: ",sorted_components)
 
     if CHEATING:
         print('Total (unmatched) examples found:', sorted(collections.Counter(which_is_zero(LAYER, cheat_get_inner_layers(all_criticals))).items()))
@@ -98,8 +100,6 @@ def graph_solve(all_ratios, all_criticals, expected_neurons, LAYER, debug=False)
         #threes = []
         #print("Pair", process_block
         #      [all_ratios[x] for x in range(len(all_criticals)) if cc[x] == 3]
-
-            
 
     if len(components) == 0:
         print("No components found")
@@ -130,8 +130,9 @@ def graph_solve(all_ratios, all_criticals, expected_neurons, LAYER, debug=False)
 
         candidate_rows = [x[0] for x in results]
         candidate_components = sorted_components
-
         candidate_rows = np.array(candidate_rows)
+        print("candidate_components", candidate_components)
+        print("Candidate rows: ",candidate_rows)
 
         new_pairings = [[] for _ in range(len(candidate_rows))]
         
@@ -190,16 +191,17 @@ def graph_solve(all_ratios, all_criticals, expected_neurons, LAYER, debug=False)
             print('Corresponding to (cheating) ', which_is_zero(LAYER, inner))
 
         possible_matrix_rows = all_ratios[list(component)]
-        
         guessed_row, normalize_axis, normalize_error = ratio_normalize(possible_matrix_rows)
 
-        print('The guessed error in the computation is',normalize_error, 'with', len(component), 'witnesses')
         if normalize_error > .01 and len(component) <= 5:
-            print("Component size less than 5 with high error; this isn't enough to be sure")
+            print("Component size less than 5 and with high error; this isn't enough to be sure")
             continue
         
+        print("Guessed row: ",guessed_row)
+        print('The guessed error in the computation is',normalize_error, 'with', len(component), 'witnesses')
         print("Normalize on axis", normalize_axis)
 
+        # check whether the guessed row is already in the set
         if len(resulting_rows):
             scaled_resulting_rows = np.array(resulting_rows)
             #print(scaled_resulting_rows.shape)
@@ -247,16 +249,22 @@ def graph_solve(all_ratios, all_criticals, expected_neurons, LAYER, debug=False)
                 possible_matrix_rows /= scale
                 for row in possible_matrix_rows:
                     print('posbl', " ".join("%2.3f"%x for x in row))
+        
+        # If there is a nan value in a row, i.e., no full signature recovery for a neuron
         if np.any(np.isnan(guessed_row)) and c_count < expected_neurons:
             print("Got NaN, need more data",len(component)/sum(map(len,components)),1/sizes[LAYER+1])
             if len(component) >= 3:
+                # If less components than layer size (expected neurons) and more than 2 critical points for the concerned neuron
                 if c_count < expected_neurons:
+                    print("Component: ",c_count, " triggers GatherMoreData.")
                     failure = GatherMoreData([all_criticals[x] for x in component])
                 skips_because_of_nan += 1
             continue
 
         guessed_row[np.isnan(guessed_row)] = 0
+        print("Guessed row converting nan to 0: ",guessed_row)
 
+        # Only for components which are bigger than 3 and which don't have np.isnan in guessed row and which are under expected_neurons count, we add them to resulting_rows => all neurons with full signature recovered
         if c_count < expected_neurons and len(component) >= 3:
             resulting_rows.append(guessed_row)
             resulting_examples.append([all_criticals[x] for x in component])
@@ -266,10 +274,13 @@ def graph_solve(all_ratios, all_criticals, expected_neurons, LAYER, debug=False)
 
     # We set failure when something went wrong but we want to defer crashing
     # (so that we can use the partial solution)
-
+    print("len(all_ratios): ",len(all_ratios))
+    print("len(resulting_rows): ",len(resulting_rows))
+    
+    # Here we either initiate more random search or we stop and output results
     if len(resulting_rows)+skips_because_of_nan < expected_neurons and len(all_ratios) < DEAD_NEURON_THRESHOLD:
         print("We have not explored all neurons. Do more random search", len(resulting_rows), skips_because_of_nan, expected_neurons)
-        raise AcceptableFailure(partial_solution=(np.array(resulting_rows), np.array(resulting_examples)))
+        raise AcceptableFailure(partial_solution=(np.array(resulting_rows, dtype="object"), np.array(resulting_examples, dtype="object")))
     else:
         print("At this point, we just assume the neuron must be dead")
         while len(resulting_rows) < expected_neurons:
@@ -376,13 +387,14 @@ def ratio_normalize(possible_matrix_rows):
             best = (column, quality)
 
     column, best_error = best
-    
     return ratio_evidence[:,column], column, best_error
 
 def gather_ratios(critical_points, known_T, check_fn, LAYER, COUNT):
     this_layer_critical_points = []
     print("Gathering", COUNT, "critical points")
     for point in critical_points:
+        print("Trying to get ratios for point", point[0])
+
         if LAYER > 0:
             if any(np.any(np.abs(x) < 1e-5) for x in known_T.get_hidden_layers(point)):
                 continue
@@ -474,6 +486,15 @@ def compute_layer_values(critical_points, known_T, LAYER):
         
         this_layer_critical_points = filtered_points
 
+        for i, point in enumerate(this_layer_critical_points):
+            layer_id, neuron_id = on_which_hidden_layer(point[1])
+            if layer_id == -1:
+                print("CP ", i, "is not a real critical point")
+            else:
+                print("CP ", i, "is a critical point of layer", layer_id+1, "Neuron", neuron_id+1)
+                # print("CP ", i, "Ratio is", point[0])
+
+
         print("After filtering duplicates we're down to ", len(this_layer_critical_points), "critical points")
         
 
@@ -512,7 +533,6 @@ def compute_layer_values(critical_points, known_T, LAYER):
             print("Graph solving failed; get more points")
             COUNT = neuron_count[LAYER+1]
             if 'partial_solution' in dir(e):
-
                 if len(e.partial_solution[0]) > 0:
                     partial_weights, corresponding_examples = e.partial_solution
                     print("Got partial solution with shape", partial_weights.shape)

@@ -43,7 +43,8 @@ def run_full_attack():
     
     known_T = KnownT(extracted_normals, extracted_biases)        
     
-    for layer_num in range(0,len(A)-1):
+    # for layer_num in range(0,len(A)-1):
+    for layer_num in range(0,1):
         # For each layer of the network ...
 
         # First setup the critical points generator

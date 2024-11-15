@@ -257,6 +257,7 @@ def sweep_for_critical_points(std=1, known_T=None):
                 offset=np.random.normal(0, np.random.uniform(std/10,std), size=DIM),
                 known_T=known_T,
                 low=-std*1e3, high=std*1e3, debug=False)
+        # sweep = do_better_sweep(known_T=known_T, low=-std*1e3, high=std*1e3, debug=False)
         print("Total intersections found", len(sweep))
         print('delta queries', query_count - qs)
         for point in sweep:

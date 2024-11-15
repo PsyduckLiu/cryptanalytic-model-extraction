@@ -21,7 +21,7 @@ import random
 ## GLOBAL VARIABLES. I am a bad person and use globals. I'm sorry. ##
 #####################################################################
 
-from jax.config import config
+from jax import config
 config.update("jax_enable_x64", True)
 
 # To ensure reproducible results to help debugging, set seeds for randomness.
@@ -47,8 +47,9 @@ query_count_at = {}
 
 PARAM_SEARCH_AT_LOCATION = 1e2
 GRAD_EPS = 1e-4
-SKIP_LINEAR_TOL = 1e-8
-BLOCK_ERROR_TOL = 1e-3
+# SKIP_LINEAR_TOL = 1e-8
+SKIP_LINEAR_TOL = 1e-3
+BLOCK_ERROR_TOL = 1e-4
 BLOCK_MULTIPLY_FACTOR = 2
 DEAD_NEURON_THRESHOLD = 1000
 MIN_SAME_SIZE = 4 # this is most likely what should be changed
@@ -56,8 +57,8 @@ MIN_SAME_SIZE = 4 # this is most likely what should be changed
 if len(sizes) == 3:
     PARAM_SEARCH_AT_LOCATION = 1e4
     GRAD_EPS = 1e1
-    SKIP_LINEAR_TOL = 1e-7
-    BLOCK_MULTIPLY_FACTOR = 8
+    SKIP_LINEAR_TOL = 1e-3
+    BLOCK_MULTIPLY_FACTOR = 2
 
 # When we save the results, we're going to use this to make sure that
 # (a) we don't trash over old results, but
