@@ -48,13 +48,15 @@ def run_full_attack():
         # For each layer of the network ...
 
         # First setup the critical points generator
+        startTime = time.time()
         critical_points = sweep_for_critical_points(PARAM_SEARCH_AT_LOCATION, known_T)
 
         # Extract weights corresponding to those critical points
         extracted_normal, extracted_bias, mask = layer_recovery.compute_layer_values(critical_points,
                                                                                      known_T, 
                                                                                      layer_num)
-
+        endTime = time.time()
+        print("Time taken for signature extraction: ",endTime-startTime)
         # Report how well we're doing
         check_quality(layer_num, extracted_normal, extracted_bias)
 
@@ -65,7 +67,11 @@ def run_full_attack():
 
         # And print how well we're doing
         check_quality(layer_num, extracted_normal, extracted_bias)
-
+        endTime = time.time()
+        print("Time taken for signature extraction with more precision: ",endTime-startTime)
+        
+        breakpoint()
+        
         # New generator
         critical_points = sweep_for_critical_points(1e1)
 

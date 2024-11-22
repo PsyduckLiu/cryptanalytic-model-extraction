@@ -302,7 +302,24 @@ def check_quality(layer_num, extracted_normal, extracted_bias, do_fix=False):
     if CHEATING:
         extracted_normal = extracted_normal[:,reorder]
         extracted_bias = extracted_bias[reorder]
-
+    print(reorder)
+    for i in range(neuron_count[layer_num+1]):
+        # Compare the real weights to the extracted weights
+        recovered_neuron = reorder[i]
+        print("Original Neuron", i, "maps on to recovered neuron", reorder[i])
+        # print("Real weights")
+        unified_real_weights = __cheat_A[layer_num][:,i]/__cheat_A[layer_num][0,i]
+        # print(unified_real_weights)
+        # print("Extracted")
+        unified_extracted_weights = extracted_normal[:,recovered_neuron]/extracted_normal[0,recovered_neuron]
+        # print(unified_extracted_weights)
+        distance = np.linalg.norm(unified_real_weights - unified_extracted_weights)
+        if distance > 1e-2:
+            print("ERROR LAYER EXTRACTED INCORRECTLY")
+            print("\t  Got:", " ".join("%.04f"%x for x in unified_extracted_weights))
+            print("\t Real:", " ".join("%.04f"%x for x in unified_real_weights))
+        else:
+            print("Layer extracted correctly")
     return extracted_normal,extracted_bias
 
 

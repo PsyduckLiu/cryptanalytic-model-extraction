@@ -37,8 +37,8 @@ def process_block(ratios, other_ratios):
 
     close = differences < BLOCK_ERROR_TOL * jnp.log(ratios.shape[1])
 
-    # pairings = jnp.sum(close, axis=2) >= max(MIN_SAME_SIZE,BLOCK_MULTIPLY_FACTOR*(np.log(ratios.shape[1])-2))
-    pairings = jnp.sum(close, axis=2) >= 2
+    pairings = jnp.sum(close, axis=2) >= max(MIN_SAME_SIZE,BLOCK_MULTIPLY_FACTOR*(np.log(ratios.shape[1])-2))
+    # pairings = jnp.sum(close, axis=2) >= 2
 
     return pairings
 
@@ -132,7 +132,7 @@ def graph_solve(all_ratios, all_criticals, expected_neurons, LAYER, debug=False)
         candidate_components = sorted_components
         candidate_rows = np.array(candidate_rows)
         print("candidate_components", candidate_components)
-        print("Candidate rows: ",candidate_rows)
+        print("Length of candidate rows", len(candidate_rows))
 
         new_pairings = [[] for _ in range(len(candidate_rows))]
         

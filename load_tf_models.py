@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 
-model_path = "models/mnist784_8x2_1v2.keras"
+model_path = "models/100_10x2_1_Seed42.keras"
 model = tf.keras.models.load_model(model_path)
 
 A = []
@@ -15,4 +15,4 @@ for i in range(1, len(model.layers)):
 
 params = [A,B]
 
-np.save("models/42_784-8-8-1", np.asarray(params, dtype="object"))
+np.save("models/42_100-10-10-1", np.asarray(params, dtype="object"))
